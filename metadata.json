@@ -1,0 +1,6 @@
+{
+  "name": "The Glucose Reset",
+  "description": "30 Days to Stop Cravings, Banish Brain Fog, and Burn Fat by Alenna Rae Willis. Includes newsletter subscription integrated with Brevo automations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
