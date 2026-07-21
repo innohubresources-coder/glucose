@@ -138,7 +138,7 @@ export default function App() {
     setResult(null);
 
     try {
-      const response = await fetch("/api/subscribe", {
+      const response = await fetch("/api/register-lead", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -164,7 +164,7 @@ export default function App() {
       setLoading(false);
       setResult({
         success: false,
-        error: "Failed to connect to subscription server. Please try again.",
+        error: `Failed to connect to subscription server (${err.message || err}). Please try again.`,
       });
     }
   };

@@ -16,7 +16,7 @@ async function startServer() {
     });
   });
 
-  app.post("/api/subscribe", async (req, res) => {
+  app.post("/api/register-lead", async (req, res) => {
     const { email, source } = req.body;
     if (!email) {
       return res.status(400).json({ error: "Email is required" });
@@ -25,7 +25,7 @@ async function startServer() {
     const apiKey = process.env.BREVO_API_KEY;
     const listIdStr = process.env.BREVO_LIST_ID;
 
-    console.log(`[API] Subscribe request received: ${email} (source: ${source})`);
+    console.log(`[API] Register lead received: ${email} (source: ${source})`);
 
     // If API key is not configured, run in Simulation/Sandbox mode
     if (!apiKey || apiKey === "xkeysib-...") {
@@ -38,12 +38,16 @@ async function startServer() {
     }
 
     try {
-      const listIds = listIdStr ? [parseInt(listIdStr, 10)] : [];
+      // Clean and parse the list ID robustly (e.g. support "#5", " 5", "5")
+      const cleanedListId = listIdStr ? listIdStr.replace(/[^0-9]/g, "") : "";
+      const parsedId = cleanedListId ? parseInt(cleanedListId, 10) : NaN;
+      const listIds = !isNaN(parsedId) ? [parsedId] : [];
+
       const payload: any = {
         email: email,
         updateEnabled: true
       };
-      if (listIds.length > 0 && !isNaN(listIds[0])) {
+      if (listIds.length > 0) {
         payload.listIds = listIds;
       }
 
