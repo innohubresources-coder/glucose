@@ -42,6 +42,13 @@ export default function App() {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [popupTriggered, setPopupTriggered] = useState(false);
 
+  // Test Email states
+  const [isTestModalOpen, setIsTestModalOpen] = useState(false);
+  const [testSenderEmail, setTestSenderEmail] = useState("innohubresources@gmail.com");
+  const [testToEmail, setTestToEmail] = useState("innohubresources@gmail.com");
+  const [testEmailLoading, setTestEmailLoading] = useState(false);
+  const [testEmailResult, setTestEmailResult] = useState<SubscribeResponse | null>(null);
+
   // Timer states
   const [hours, setHours] = useState("24");
   const [minutes, setMinutes] = useState("00");
@@ -169,6 +176,45 @@ export default function App() {
     }
   };
 
+  // Handle direct test email submission
+  const handleTestEmailSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!testToEmail || !testToEmail.includes("@")) {
+      setTestEmailResult({ success: false, error: "Recipient email must be valid." });
+      return;
+    }
+    if (!testSenderEmail || !testSenderEmail.includes("@")) {
+      setTestEmailResult({ success: false, error: "Sender email must be valid." });
+      return;
+    }
+
+    setTestEmailLoading(true);
+    setTestEmailResult(null);
+
+    try {
+      const response = await fetch("/api/send-test-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          toEmail: testToEmail.trim(),
+          senderEmail: testSenderEmail.trim()
+        }),
+      });
+
+      const data: SubscribeResponse = await response.json();
+      setTestEmailLoading(false);
+      setTestEmailResult(data);
+    } catch (err: any) {
+      setTestEmailLoading(false);
+      setTestEmailResult({
+        success: false,
+        error: `Failed to connect to API server (${err.message || err})`
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gold-50 font-sans selection:bg-gold-200 selection:text-charcoal relative">
       
@@ -186,6 +232,13 @@ export default function App() {
           </span>
         </div>
         <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setIsTestModalOpen(true)}
+            className="text-[10px] text-emerald-400 hover:text-emerald-300 underline transition duration-200 cursor-pointer font-semibold uppercase tracking-wider flex items-center gap-1"
+          >
+            ✉️ Send a Test Email
+          </button>
+          <span className="text-white/20">|</span>
           <button 
             onClick={() => setIsPopupOpen(true)}
             className="text-[10px] text-gold-500 hover:text-gold-100 underline transition duration-200 cursor-pointer font-semibold uppercase tracking-wider"
@@ -824,6 +877,139 @@ export default function App() {
                   className="text-xs text-muted/60 underline hover:text-charcoal mt-2 cursor-pointer bg-transparent border-0"
                 >
                   No thanks, I'll pass
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ==================== BREVO DIAGNOSTICS & SMTP TESTER MODAL ==================== */}
+      <AnimatePresence>
+        {isTestModalOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/65 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setIsTestModalOpen(false);
+            }}
+          >
+            <motion.div 
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl relative border-2 border-emerald-500/30 text-charcoal"
+            >
+              {/* Close Button */}
+              <button 
+                onClick={() => setIsTestModalOpen(false)}
+                className="absolute top-4 right-4 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 rounded-full p-1.5 transition-colors duration-200 cursor-pointer"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              {/* Header */}
+              <div className="mb-5">
+                <span className="bg-emerald-100 text-emerald-800 text-[9px] uppercase tracking-widest font-extrabold px-3 py-1 rounded-full mb-2 inline-block">
+                  🛠️ Brevo Diagnostics & SMTP Tester
+                </span>
+                <h3 className="font-serif text-2xl font-bold text-charcoal leading-tight">
+                  Send a Direct Test Email
+                </h3>
+                <p className="text-xs text-muted mt-1">
+                  Verify your Brevo SMTP is sending emails successfully to your inbox.
+                </p>
+              </div>
+
+              {/* Informative Help Box */}
+              <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 mb-5 leading-relaxed">
+                <strong className="text-amber-900 block mb-0.5">💡 Why didn't I receive an email before?</strong>
+                Adding a subscriber to a list in Brevo via API does not automatically dispatch an email. You need an active <strong className="text-amber-900">Automation Workflow</strong> in your Brevo account triggered by <em>"Contact added to list"</em>.
+                <br />
+                <span className="block mt-1 font-semibold text-emerald-800">Use this SMTP tester to send a direct email right now!</span>
+              </div>
+
+              {/* SMTP Email Form */}
+              <form onSubmit={handleTestEmailSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-charcoal/80 mb-1">
+                    Sender Email Address <span className="text-rose-500">*</span>
+                  </label>
+                  <input 
+                    type="email" 
+                    value={testSenderEmail}
+                    onChange={(e) => setTestSenderEmail(e.target.value)}
+                    placeholder="e.g. innohubresources@gmail.com" 
+                    className="w-full px-4 py-2.5 rounded-xl border border-gold-200 bg-white text-xs focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 text-charcoal"
+                    required
+                  />
+                  <p className="text-[10px] text-muted mt-1 leading-snug">
+                    ⚠️ <strong>Must</strong> match an active, verified sender domain or email address inside your Brevo Account.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-charcoal/80 mb-1">
+                    Recipient Email Address <span className="text-rose-500">*</span>
+                  </label>
+                  <input 
+                    type="email" 
+                    value={testToEmail}
+                    onChange={(e) => setTestToEmail(e.target.value)}
+                    placeholder="Your inbox to receive the test" 
+                    className="w-full px-4 py-2.5 rounded-xl border border-gold-200 bg-white text-xs focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 text-charcoal"
+                    required
+                  />
+                </div>
+
+                <button 
+                  type="submit" 
+                  disabled={testEmailLoading}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm py-3 rounded-xl transition-all duration-200 shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {testEmailLoading ? "Sending Test Email..." : "⚡ Send SMTP Test Email"}
+                </button>
+              </form>
+
+              {/* Result Area */}
+              {testEmailResult && (
+                <div className="mt-5">
+                  <div className={`rounded-xl p-4 text-xs ${testEmailResult.success ? 'bg-emerald-50 text-emerald-900 border border-emerald-200' : 'bg-rose-50 text-rose-900 border border-rose-200'}`}>
+                    <div className="flex items-center gap-2 mb-1.5 font-bold">
+                      {testEmailResult.success ? (
+                        <>
+                          <CheckCircle className="w-5 h-5 text-emerald-600" />
+                          <span>Delivery Succeeded!</span>
+                        </>
+                      ) : (
+                        <>
+                          <AlertCircle className="w-5 h-5 text-rose-600" />
+                          <span>Email Blocked / Error</span>
+                        </>
+                      )}
+                    </div>
+                    <p className="leading-relaxed font-sans">{testEmailResult.message || testEmailResult.error}</p>
+                    {testEmailResult.details && (
+                      <div className="mt-2 pt-2 border-t border-dashed border-charcoal/10">
+                        <p className="font-mono text-[10px] text-charcoal/70 overflow-auto whitespace-pre-wrap max-h-24">
+                          API Response: {JSON.stringify(testEmailResult.details, null, 2)}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="text-center mt-5">
+                <button 
+                  type="button"
+                  onClick={() => setIsTestModalOpen(false)}
+                  className="text-xs text-muted hover:text-charcoal cursor-pointer font-medium"
+                >
+                  Close Tester
                 </button>
               </div>
             </motion.div>
