@@ -22,67 +22,115 @@ async function startServer() {
       return res.status(400).json({ error: "Email is required" });
     }
 
-    const apiKey = process.env.BREVO_API_KEY;
-    const listIdStr = process.env.BREVO_LIST_ID;
-
     console.log(`[API] Register lead received: ${email} (source: ${source})`);
 
-    // If API key is not configured, run in Simulation/Sandbox mode
-    if (!apiKey || apiKey === "xkeysib-...") {
-      console.log(`[Brevo Simulation] Contact simulated: ${email}`);
-      return res.json({
-        success: true,
-        simulated: true,
-        message: "Subscription simulated successfully! (Brevo API key is not configured yet - configure BREVO_API_KEY in the Secrets panel)."
-      });
-    }
+    let fluentFormSuccess = false;
+    let fluentFormInsertId: number | null = null;
+    let redirectUrl = "https://innohubresources.com/glucose-quick-reset-guide/";
+    let fluentFormError = "";
 
+    // 1. Submit to WordPress Fluent Form [fluentform id="23"]
     try {
-      // Clean and parse the list ID robustly (e.g. support "#5", " 5", "5")
-      const cleanedListId = listIdStr ? listIdStr.replace(/[^0-9]/g, "") : "";
-      const parsedId = cleanedListId ? parseInt(cleanedListId, 10) : NaN;
-      const listIds = !isNaN(parsedId) ? [parsedId] : [];
+      console.log(`[FluentForm 23] Submitting lead ${email} to WordPress...`);
+      const pageRes = await fetch("https://innohubresources.com/?ff_landing=23");
+      const html = await pageRes.text();
 
-      const payload: any = {
-        email: email,
-        updateEnabled: true
-      };
-      if (listIds.length > 0) {
-        payload.listIds = listIds;
-      }
+      const nonceMatch = html.match(/_fluentform_23_fluentformnonce["\s\S]*?value="([^"]+)"/) || html.match(/"nonce":"([^"]+)"/);
+      const nonce = nonceMatch ? nonceMatch[1] : "";
 
-      const response = await fetch("https://api.brevo.com/v3/contacts", {
+      const postIdMatch = html.match(/name=["\']__fluent_form_embded_post_id["\']\s+value=["\']([^"\']+)["\']/);
+      const postId = postIdMatch ? postIdMatch[1] : "4466";
+
+      const formDataParams = new URLSearchParams({
+        "__fluent_form_embded_post_id": postId,
+        "_fluentform_23_fluentformnonce": nonce,
+        "_wp_http_referer": "/?ff_landing=23",
+        "email": email.trim()
+      });
+
+      const bodyParams = new URLSearchParams({
+        action: "fluentform_submit",
+        form_id: "23",
+        data: formDataParams.toString()
+      });
+
+      const submitRes = await fetch("https://innohubresources.com/wp-admin/admin-ajax.php?t=" + Date.now(), {
         method: "POST",
         headers: {
-          "accept": "application/json",
-          "content-type": "application/json",
-          "api-key": apiKey
+          "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"
         },
-        body: JSON.stringify(payload)
+        body: bodyParams.toString()
       });
 
-      const responseData = await response.json().catch(() => null);
-
-      if (!response.ok) {
-        console.error("[Brevo Error]", responseData);
-        return res.status(response.status).json({
-          success: false,
-          error: responseData?.message || `Brevo API error (${response.status})`,
-          details: responseData
-        });
+      const ffJson = await submitRes.json().catch(() => null);
+      if (ffJson && ffJson.success) {
+        fluentFormSuccess = true;
+        fluentFormInsertId = ffJson.data?.insert_id || null;
+        if (ffJson.data?.result?.redirectUrl) {
+          redirectUrl = ffJson.data.result.redirectUrl;
+        }
+        console.log(`[FluentForm 23 Success] Insert ID: ${fluentFormInsertId}, Redirect: ${redirectUrl}`);
+      } else {
+        fluentFormError = ffJson?.data?.error || ffJson?.errors?.email?.required || "FluentForm submission error";
+        console.warn(`[FluentForm 23 Warning] Response:`, ffJson);
       }
+    } catch (err: any) {
+      console.error("[FluentForm 23 Error]", err);
+      fluentFormError = err.message || "Failed to contact WordPress FluentForm endpoint";
+    }
 
-      console.log(`[Brevo Success] Contact subscribed: ${email}`, responseData);
+    // 2. Dual Sync with Brevo if configured
+    const apiKey = process.env.BREVO_API_KEY;
+    const listIdStr = process.env.BREVO_LIST_ID;
+    let brevoSuccess = false;
+
+    if (apiKey && apiKey !== "xkeysib-...") {
+      try {
+        const cleanedListId = listIdStr ? listIdStr.replace(/[^0-9]/g, "") : "";
+        const parsedId = cleanedListId ? parseInt(cleanedListId, 10) : NaN;
+        const listIds = !isNaN(parsedId) ? [parsedId] : [];
+
+        const payload: any = {
+          email: email.trim(),
+          updateEnabled: true
+        };
+        if (listIds.length > 0) {
+          payload.listIds = listIds;
+        }
+
+        const brevoRes = await fetch("https://api.brevo.com/v3/contacts", {
+          method: "POST",
+          headers: {
+            "accept": "application/json",
+            "content-type": "application/json",
+            "api-key": apiKey
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (brevoRes.ok) {
+          brevoSuccess = true;
+          console.log(`[Brevo Success] Contact synced: ${email}`);
+        }
+      } catch (bErr) {
+        console.error("[Brevo Sync Warning]", bErr);
+      }
+    }
+
+    // Return combined result
+    if (fluentFormSuccess || brevoSuccess) {
       return res.json({
         success: true,
-        simulated: false,
-        message: "Successfully subscribed to Brevo!"
+        message: "Thank you! You've been successfully subscribed.",
+        redirectUrl: redirectUrl,
+        fluentFormSubmitted: fluentFormSuccess,
+        fluentFormInsertId: fluentFormInsertId,
+        brevoSynced: brevoSuccess
       });
-    } catch (err: any) {
-      console.error("[API Error] Failed to contact Brevo:", err);
+    } else {
       return res.status(500).json({
         success: false,
-        error: err.message || "Failed to contact Brevo service"
+        error: fluentFormError || "Failed to submit lead to WordPress FluentForm."
       });
     }
   });

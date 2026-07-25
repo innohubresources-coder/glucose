@@ -3,6 +3,10 @@ export interface SubscribeResponse {
   simulated?: boolean;
   message?: string;
   error?: string;
+  redirectUrl?: string;
+  fluentFormSubmitted?: boolean;
+  fluentFormInsertId?: number | null;
+  brevoSynced?: boolean;
 }
 
 export interface BrevoConfig {

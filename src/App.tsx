@@ -218,39 +218,6 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gold-50 font-sans selection:bg-gold-200 selection:text-charcoal relative">
       
-      {/* ==================== BREVO CONNECTION STATUS HEADER ==================== */}
-      <div className="bg-charcoal text-white text-xs py-2 px-4 flex justify-between items-center flex-wrap gap-2 border-b border-gold-500/20">
-        <div className="flex items-center gap-2">
-          <span className="relative flex h-2 w-2">
-            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${config.brevoConfigured ? 'bg-emerald-400' : 'bg-amber-400'}`}></span>
-            <span className={`relative inline-flex rounded-full h-2 w-2 ${config.brevoConfigured ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
-          </span>
-          <span className="font-mono text-[10px] tracking-wider uppercase">
-            {config.brevoConfigured 
-              ? `Brevo Connected (List ID: ${config.listId || "Default"})` 
-              : "Brevo Sandbox/Simulation Mode"}
-          </span>
-        </div>
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={() => setIsTestModalOpen(true)}
-            className="text-[10px] text-emerald-400 hover:text-emerald-300 underline transition duration-200 cursor-pointer font-semibold uppercase tracking-wider flex items-center gap-1"
-          >
-            ✉️ Send a Test Email
-          </button>
-          <span className="text-white/20">|</span>
-          <button 
-            onClick={() => setIsPopupOpen(true)}
-            className="text-[10px] text-gold-500 hover:text-gold-100 underline transition duration-200 cursor-pointer font-semibold uppercase tracking-wider"
-          >
-            ⚙️ Test Exit Popup Form
-          </button>
-          <span className="text-[10px] text-muted hidden md:inline">
-            Status: <strong className="text-gold-500">Active Sequence</strong>
-          </span>
-        </div>
-      </div>
-
       {/* ==================== TOP BAR ==================== */}
       <header className="border-b border-gold-100 py-4">
         <div className="max-w-4xl mx-auto px-6 flex justify-between items-center">
@@ -644,7 +611,7 @@ export default function App() {
                     value={leadEmail}
                     onChange={(e) => setLeadEmail(e.target.value)}
                     placeholder="Enter your best email address..." 
-                    className="w-full pl-11 pr-4 py-4 rounded-full border border-gold-200 bg-white text-sm focus:outline-none focus:border-gold-500 focus:ring-4 focus:ring-gold-500/10 transition-all"
+                    className="w-full pl-11 pr-4 py-4 rounded-full border border-gold-200 bg-white text-sm focus:outline-none focus:border-gold-500 focus:ring-4 focus:ring-gold-500/10 transition-all text-charcoal"
                     required
                   />
                 </div>
@@ -653,7 +620,7 @@ export default function App() {
                   disabled={leadLoading}
                   className="bg-gold-500 hover:bg-gold-600 text-white font-bold text-sm px-8 py-4 rounded-full transition-all duration-200 shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
-                  {leadLoading ? "Sending..." : "Send Free Guide"}
+                  {leadLoading ? "Submitting to FluentForm..." : "Send Free Guide"}
                 </button>
               </form>
             ) : (
@@ -669,16 +636,29 @@ export default function App() {
                     <AlertCircle className="w-8 h-8 text-rose-500" />
                   )}
                 </div>
-                <h4 className="font-bold text-sm">{leadResult.success ? "Successfully Joined!" : "Action Required"}</h4>
+                <h4 className="font-bold text-sm">{leadResult.success ? "Successfully Submitted to FluentForm #23!" : "Submission Issue"}</h4>
                 <p className="text-xs mt-1">{leadResult.message || leadResult.error}</p>
-                {leadResult.success && leadResult.simulated && (
-                  <p className="text-[10px] text-amber-700 font-mono mt-3 bg-amber-50 rounded-lg p-2 border border-amber-200">
-                    💡 Configure <strong>BREVO_API_KEY</strong> in the Secrets menu to route real-time contact automation directly to your live Brevo workflow.
-                  </p>
+                {leadResult.success && (
+                  <div className="mt-3 space-y-2">
+                    <span className="inline-block bg-emerald-100 text-emerald-800 font-mono text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">
+                      ✓ WordPress FluentForm #23 Synced (Lead ID: #{leadResult.fluentFormInsertId || "Active"})
+                    </span>
+                    <div>
+                      <a 
+                        href={leadResult.redirectUrl || "https://innohubresources.com/glucose-quick-reset-guide/"} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-5 py-2.5 rounded-full transition shadow mt-2"
+                      >
+                        <span>📥 Download Glucose Quick Reset Guide</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </a>
+                    </div>
+                  </div>
                 )}
                 <button 
                   onClick={() => setLeadResult(null)}
-                  className="text-xs font-semibold underline mt-3 cursor-pointer opacity-70 hover:opacity-100"
+                  className="text-xs font-semibold underline mt-3 cursor-pointer opacity-70 hover:opacity-100 block mx-auto"
                 >
                   Submit another email
                 </button>
@@ -841,7 +821,7 @@ export default function App() {
                       disabled={exitLoading}
                       className="w-full bg-gold-500 hover:bg-gold-600 text-white font-bold text-base py-4 rounded-full transition-all duration-200 shadow-lg shadow-gold-500/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                     >
-                      {exitLoading ? "Sending Details..." : "📩 Send Me The Cheatsheet"}
+                      {exitLoading ? "Submitting to FluentForm..." : "📩 Send Me The Cheatsheet"}
                     </button>
                   </form>
                 ) : (
@@ -857,12 +837,25 @@ export default function App() {
                         <AlertCircle className="w-8 h-8 text-rose-500" />
                       )}
                     </div>
-                    <h4 className="font-bold text-sm">{exitResult.success ? "Success!" : "Subscription Failed"}</h4>
+                    <h4 className="font-bold text-sm">{exitResult.success ? "Successfully Submitted to FluentForm #23!" : "Submission Failed"}</h4>
                     <p className="text-xs mt-1">{exitResult.message || exitResult.error}</p>
-                    {exitResult.success && exitResult.simulated && (
-                      <p className="text-[10px] text-amber-700 font-mono mt-3 bg-amber-50 rounded-lg p-2 border border-amber-200">
-                        💡 Demo status active. Copy and add your <strong>BREVO_API_KEY</strong> to secrets to link this directly to your Brevo campaign.
-                      </p>
+                    {exitResult.success && (
+                      <div className="mt-3 space-y-2">
+                        <span className="inline-block bg-emerald-100 text-emerald-800 font-mono text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">
+                          ✓ WordPress FluentForm #23 Synced (Lead ID: #{exitResult.fluentFormInsertId || "Active"})
+                        </span>
+                        <div>
+                          <a 
+                            href={exitResult.redirectUrl || "https://innohubresources.com/glucose-quick-reset-guide/"} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-5 py-2.5 rounded-full transition shadow mt-2"
+                          >
+                            <span>📥 Download Glucose Quick Reset Guide</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </a>
+                        </div>
+                      </div>
                     )}
                   </motion.div>
                 )}
